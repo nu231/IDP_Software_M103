@@ -43,25 +43,6 @@ def lift_block():
 def travel_position():
     change_height(10)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # def initalise_servo():
 #     """This function initialises the servo motor"""
 #     gv.level = 0 #or a different level if this is too low for the forks to insert into the pallet

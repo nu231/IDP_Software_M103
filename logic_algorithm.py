@@ -1,9 +1,16 @@
+# importing required functions from other files in the same directory
 import Box_Collection
 import Line_Following
 import Button
 import Global_Variables as gv
+
+
+#importing libraries used in this file
 import time
 
+
+# defining constants for distance of blind movements 
+# each constant defines a tunable distance the robot needs to move at each key locations on the board
 SMALL = 8/20
 CLOCK_SMALL = 4/20
 TEMP_BLIND = 9/20
@@ -14,6 +21,9 @@ TINY_QR_FWD = 1/20
 OUT_OF_COLORED_BAYS = 10/20
 FWD_HOME = 20/20
 
+
+# the dictionary connections defines the graph of key nodes on the graph to be used for navigation
+# this dictionary also contains the relative direction of one node from another
 connections = {
     "Home": {"Yellow": 270, "Green": 90},
     "Yellow": {"Red": 270, "Home": 90},
@@ -32,6 +42,9 @@ connections = {
     "U_purple": {"J_U_purple": 0}
     }
 
+
+# path_det is a secondary dictionary to show the relative locations of each node, showing which node is closest to which node.
+# this dictionary will be used for the function mini_pathfinding
 path_det = {
     "Home": 5,
     "Yellow": 6,
@@ -43,6 +56,8 @@ path_det = {
     "Ramp": None
 }
 
+
+#the class State is used to define the state of the robot
 class State:
     """
     global class containing all information about the state of the robot
@@ -51,6 +66,8 @@ class State:
     self.destination: destination of the robot at the moment, which of the four shelf the robot will be depositing the box it is carrying
     self.bay: which exact bay, out of six, does the box belong to within each row of shelves
     self.remaining_boxes: contains the bays which still have not yet been unloaded in phase 1
+    self.phase tells the robot which phase it is in (phase 1 is when all 4 bays have boxes, phase 2 is when only a box is added one by one)
+    self.q is a temporary state variable used for error handling if the reset button is pressed during the operation of the robot. It is only used if the button is pressed during operation
     """
 
     def __init__(self, loc, orien):
@@ -63,10 +80,16 @@ class State:
         self.q = 0
         
 
+# the global variable state is initialized
 global state
 state = State("Home", 180)
 
+# Defining the functions required for the operation of the robot
+
 def crashed(phase):
+    """
+    function to reset the state of the robot to inital state in the case that the button is pressed during the operation of the robot
+    """
     state.loc = "Home"
     state.orien = 180
     state.phase = phase
@@ -75,8 +98,9 @@ def crashed(phase):
 
 def mini_path_find(start, dest, min_max):
     """
-    pathfinds a route from loading/unloading bay to a desired shelf by finding the shortest path.
+    pathfinds a route from loading/unloading bay to a desired lower shelf or the ramp by finding the shortest path.
     The shortest path is determined by the starting position, and from this the robot decides to go clockwise or anticlockwise
+    A list of nodes the robot has to pass to reach the destination the msot efficiently is returned
     """
 
     queue = [start]
@@ -93,7 +117,8 @@ def mini_path_find(start, dest, min_max):
 
 def path_find(start, dest):
     """
-    pathfinds from a loading/unlaoding bay to the desired shelf
+    the complete path from current location to destination is returned
+    pathfinds from a loading/unloading bay to the desired shelf, even if the shelf is on the upper level
     outputs an array with all the nodes to pass
     """
 
@@ -123,47 +148,84 @@ def path_find(start, dest):
 
 
 def fwd_until_junc():
+    """
+    function that makes the robot move forward until a junction is detected
+    """
     Line_Following.line_following(pickup=False, dropoff=False)
 
 def clockwise(complete=False, speed = 100):
+    """
+    function that makes the robot turn clockwise then slightly move forwards past the junction
+    The slight forward movement action can be skipped if complete == True is passed to it. This is used when making the robot turn 180 degrees instead of just 90 degrees
+    """
     Line_Following.turn_clockwise(speed)
     if complete == False:
         Line_Following.blind_forward(CLOCK_SMALL)
 
 def anticlockwise(complete=False, speed = 100):
+    """
+    function that makes the robot turn anticlockwise then slightly move forwards past the junction
+    The slight forward movement action can be skipped if complete == True is passed to it. This is used when making the robot turn 180 degrees instead of just 90 degrees
+    """
     Line_Following.turn_anticlockwise(speed)
     if complete == False:
         Line_Following.blind_forward(CLOCK_SMALL)
 
 def load_fork():
+    """
+    This function lifts the fork from the ground up to the travelling height
+    """
     Box_Collection.lift_block()
 
 def unload_fork():
+    """
+    This function lowers the fork from the travelling height to the bay height, taking into account the different bay height in the upper and lower racks
+    """
     if state.destination == "U_orange" or state.destination == "U_purple":
         Box_Collection.lower_to_ground()
     elif state.destination == "L_orange" or state.destination == "L_purple":
         Box_Collection.lower_onto_rack()
 
 def fwd_until_black():
+    """
+    This function makes the robot line follow for 2 seconds, the distance for the robot to reach the loading or unloading racks
+    """
     Line_Following.line_following(blind = True, blind_time = 2 * 1000000000)
 
 def fwd_until_box():
+    """
+    This function makes the robot line follow until the robot reaches the box
+    """
     Line_Following.line_following(pickup=True, dropoff=False)
 
 def fwd(distance):
+    """
+    This function makes the robot move forward without line following for a specified distance
+    """
     Line_Following.blind_forward(distance_wanted = distance)
 
 def is_RHS_lidar_pos():
+    """
+    placeholder function for the implementation of right lidar sensor for phase 2 detection of boxes
+    """
     pass
 
 def is_LHS_lidar_pos():
+    """
+    placeholder function for the implementation of left lidar sensor for phase 2 detection of boxes
+    """
     pass
 
 def rvs(distance):
+    """
+    This function makes the robot move in reverse without line following for a specified distance
+    """
     Line_Following.blind_reverse(distance_wanted = distance)
 
 def parse_qr(text):
-
+    """
+    This function parses the qr code read by the qr code sensor and outputs a destination and bay position
+    """
     translator = {
         "A": "orange",
         "B": "purple",
@@ -171,10 +233,9 @@ def parse_qr(text):
         "lower": "L"
     }
 
-    # Split the string by commas and strip any extra spaces
     parts = [part.strip() for part in text.split(',')]
 
-    # Extract the required parts
+    # Extract the parts we are interested in
     rack = parts[0].split()[1]
     level = parts[1]
     position = parts[2]
@@ -203,8 +264,8 @@ def count_unload_return():
 
 def execute_travel(route):
     """
-    Tells the robot to move according to the route provided.
-    Contains code to ignore loading bay lines on the bottom floor is the target destination is on the top floor
+    Tells the robot to move according to the list of nodes provided.
+    Contains code to ignore loading bay lines on the bottom floor if the target destination is on the top floor
     """
     destination = route[-1]
     output = route.copy()
@@ -240,7 +301,7 @@ def execute_travel(route):
 
 def return_to_color(path_fwd):
     """
-    instructs the robot to move back to the colored loading/unloading bays from its current location
+    instructs the robot to move back to the colored loading/unloading bays from its current location at the racks
     """
     path_rvs = path_fwd[::-1]
     while path_rvs[-2] in ["Red", "Yellow", "Green", "Blue"]:
@@ -283,7 +344,7 @@ def phase_1_find_box():
     
 def GO_HOME():
     """
-    starting at either Red or Blue pointing to 0 degrees, make the robot go to the nearest bay with a box and turn to face the box
+    Function to make the robot go back home, given the robot position is the Red or Blue junction
     """
     if state.loc == "Red":
         i = 0
@@ -374,7 +435,7 @@ def phase_2_detect_boxes():
 
 def turn_unload_return(bay):
     """
-    Instructs the robot to turn, move towards the shelf, unload and return to the initial position
+    Instructs the robot to turn, move towards the rack, unload and return to the initial position
     """
     
     if state.destination == "U_purple" or state.destination == "L_orange":
@@ -405,7 +466,7 @@ def turn_unload_return(bay):
 
 def start_at_yellow():
     """
-    Instructs the robot to move from home to yellow, the first loading bay
+    Instructs the robot to move from home to the first loading bay with a box.
     """
     if "Yellow" in state.remaining_boxes():
         fwd_until_junc()
@@ -456,7 +517,8 @@ def start_at_yellow():
 def main():
     """
     Runs the entire program, telling the robot to do phase 1 (boxes in all 4 bays)
-    then phase 2 (boxes only added one by one to a random loading bay)
+    Instructs the robot to move the box into the racks bay by bay until all 4 racks are completed, then instructs the robot to return to home
+    We also introduce error handing in the case that the button is pressed during the operation of the robot
     """
     while True:
         HOMIE = 1
@@ -491,7 +553,7 @@ def main():
             GO_HOME()
             return 0
     
-
+    # commented out the phase 2 code as lidar implentation was not completed
     # for p in range(90):
     #     try:
     #         phase_2_detect_boxes()
