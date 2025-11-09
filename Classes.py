@@ -1,6 +1,10 @@
 from machine import Pin, PWM
 
 class Motor:
+    """
+    This class provides instructions to the Motor
+    """
+
     def __init__(self, dirPin, PWMPin):
         self.mDir = Pin(dirPin, Pin.OUT)  # set motor direction pin
         self.pwm = PWM(Pin(PWMPin))  # set motor pwm pin

@@ -151,7 +151,7 @@ def fwd_until_junc():
     """
     function that makes the robot move forward until a junction is detected
     """
-    Line_Following.line_following(pickup=False, dropoff=False)
+    Line_Following.line_following(pickup=False)
 
 def clockwise(complete=False, speed = 100):
     """
@@ -196,7 +196,7 @@ def fwd_until_box():
     """
     This function makes the robot line follow until the robot reaches the box
     """
-    Line_Following.line_following(pickup=True, dropoff=False)
+    Line_Following.line_following(pickup=True)
 
 def fwd(distance):
     """
